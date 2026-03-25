@@ -1,0 +1,27 @@
+storage:
+  dbPath: {{ mongodb_data_root }}
+  journal:
+    enabled: true
+systemLog:
+  destination: file
+  path: {{ mongodb_log_root }}/mongod.log
+  logAppend: true
+processManagement:
+  fork: true
+net:
+  bindIp: {{ mongodb_bind_ip }}
+  port: {{ mongodb_port_mongod }}
+  maxIncomingConnections: {{ mongodb_net_max_incoming_connections }}
+security:
+  keyFile: {{ mongodb_keyfile_path }}
+{% if mongodb_role == 'configsvr' %}
+sharding:
+  clusterRole: configsvr
+replication:
+  replSetName: {{ mongodb_config_replset }}
+{% elif mongodb_role == 'shardsvr' %}
+sharding:
+  clusterRole: shardsvr
+replication:
+  replSetName: {{ mongodb_replset_name }}
+{% endif %}

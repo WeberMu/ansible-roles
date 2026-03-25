@@ -1,0 +1,33 @@
+---
+- name: Add shards to mongos router
+  ansible.builtin.shell: |
+    mongosh --quiet --port {{ mongodb_port_mongos }} --eval '
+      sh.addShard("{{ item.replset }}/{{ (groups[item.group] | default([])) | map('regex_replace', '$', ':' ~ mongodb_port_mongod|string) | join(',') }}")
+    '
+  args:
+    executable: /bin/bash
+  register: mongodb_add_shard
+  changed_when: "'already exists' not in (mongodb_add_shard.stdout + mongodb_add_shard.stderr)"
+  failed_when: mongodb_add_shard.rc != 0 and ('already exists' not in (mongodb_add_shard.stdout + mongodb_add_shard.stderr))
+  loop: "{{ mongodb_shards }}"
+  when: inventory_hostname == mongodb_init_on_host
+  run_once: true
+
+- name: Create cluster admin user
+  ansible.builtin.shell: |
+    mongosh --quiet --port {{ mongodb_port_mongos }} --eval '
+      use admin;
+      db.createUser({
+        user: "{{ mongodb_admin_user }}",
+        pwd: "{{ mongodb_admin_password }}",
+        roles: [ { role: "root", db: "admin" } ]
+      })
+    '
+  args:
+    executable: /bin/bash
+  no_log: true
+  register: mongodb_admin_user_create
+  changed_when: "'already exists' not in (mongodb_admin_user_create.stdout + mongodb_admin_user_create.stderr)"
+  failed_when: mongodb_admin_user_create.rc != 0 and ('already exists' not in (mongodb_admin_user_create.stdout + mongodb_admin_user_create.stderr))
+  when: inventory_hostname == mongodb_init_on_host
+  run_once: true

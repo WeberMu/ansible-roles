@@ -1,0 +1,19 @@
+---
+- name: Initialize each shard replica set
+  ansible.builtin.shell: |
+    mongosh --quiet --port {{ mongodb_port_mongod }} --eval '
+      rs.initiate({_id: "{{ item.replset }}", members: [
+      {% for host in (groups[item.group] | default([])) %}
+      { _id: {{ loop.index0 }}, host: "{{ host }}:{{ mongodb_port_mongod }}" }{% if not loop.last %}, {% endif %}
+      {% endfor %}
+      ]})
+    '
+  args:
+    executable: /bin/bash
+  register: mongodb_shard_init
+  changed_when: "'already initialized' not in mongodb_shard_init.stdout"
+  failed_when: mongodb_shard_init.rc != 0 and ('already initialized' not in (mongodb_shard_init.stdout + mongodb_shard_init.stderr))
+  when:
+    - inventory_hostname == ((groups[item.group] | default([])) | first)
+  loop: "{{ mongodb_shards }}"
+  run_once: true

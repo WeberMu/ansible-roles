@@ -1,0 +1,12 @@
+---
+- name: restart mongod
+  ansible.builtin.systemd:
+    name: mongod
+    state: restarted
+    enabled: true
+
+- name: restart mongos
+  ansible.builtin.systemd:
+    name: mongos
+    state: restarted
+    enabled: true

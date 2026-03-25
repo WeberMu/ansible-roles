@@ -1,0 +1,27 @@
+---
+mongodb_version: "7.0"
+mongodb_repo_dist: "jammy"
+mongodb_bind_ip: "0.0.0.0"
+mongodb_port_mongod: 27017
+mongodb_port_mongos: 27018
+mongodb_data_root: /var/lib/mongo
+mongodb_log_root: /var/log/mongodb
+mongodb_admin_user: clusterAdmin
+mongodb_admin_password: "ChangeMeStrongPassword"
+mongodb_keyfile_content: "REPLACE_WITH_LONG_RANDOM_SHARED_SECRET"
+mongodb_keyfile_path: /etc/mongod-keyfile
+
+mongodb_config_replset: cfgReplSet
+mongodb_config_servers_group: mongo_configsvr
+mongodb_shards:
+  - replset: shard01ReplSet
+    group: mongo_shard01
+  - replset: shard02ReplSet
+    group: mongo_shard02
+
+mongodb_mongos_group: mongo_mongos
+mongodb_init_on_host: "{{ (groups[mongodb_mongos_group] | default([]) | first) | default(inventory_hostname) }}"
+
+mongodb_client_package: mongodb-mongosh
+
+mongodb_net_max_incoming_connections: 65536
