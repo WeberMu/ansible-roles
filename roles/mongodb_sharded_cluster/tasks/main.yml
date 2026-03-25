@@ -1,0 +1,12 @@
+---
+- name: Install and configure MongoDB for sharded cluster
+  ansible.builtin.include_tasks: setup.yml
+
+- name: Initialize config server replica set
+  ansible.builtin.include_tasks: init_config_replset.yml
+
+- name: Initialize shard replica sets
+  ansible.builtin.include_tasks: init_shards.yml
+
+- name: Add shards to router
+  ansible.builtin.include_tasks: add_shards.yml

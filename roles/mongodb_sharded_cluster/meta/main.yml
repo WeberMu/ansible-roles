@@ -1,0 +1,16 @@
+---
+galaxy_info:
+  role_name: mongodb_sharded_cluster
+  author: codex
+  description: Deploy MongoDB sharded cluster including config servers, shard replica sets and mongos routers.
+  license: MIT
+  min_ansible_version: "2.14"
+  platforms:
+    - name: Ubuntu
+      versions:
+        - jammy
+  galaxy_tags:
+    - mongodb
+    - sharding
+    - database
+dependencies: []

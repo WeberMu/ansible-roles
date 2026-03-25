@@ -1,0 +1,22 @@
+---
+- name: Build config server members payload
+  ansible.builtin.set_fact:
+    mongodb_cfg_members: |
+      [{% for host in (groups[mongodb_config_servers_group] | default([])) %}
+      { _id: {{ loop.index0 }}, host: "{{ host }}:{{ mongodb_port_mongod }}" }{% if not loop.last %}, {% endif %}
+      {% endfor %}]
+  run_once: true
+
+- name: Initialize config replica set
+  ansible.builtin.shell: |
+    mongosh --quiet --port {{ mongodb_port_mongod }} --eval '
+      rs.initiate({_id: "{{ mongodb_config_replset }}", configsvr: true, members: {{ mongodb_cfg_members }} })
+    '
+  args:
+    executable: /bin/bash
+  register: mongodb_cfg_init
+  changed_when: "'already initialized' not in mongodb_cfg_init.stdout"
+  failed_when: mongodb_cfg_init.rc != 0 and ('already initialized' not in (mongodb_cfg_init.stdout + mongodb_cfg_init.stderr))
+  when:
+    - inventory_hostname == (groups[mongodb_config_servers_group] | first)
+  run_once: true

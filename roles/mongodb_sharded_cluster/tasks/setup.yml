@@ -1,0 +1,102 @@
+---
+- name: Determine MongoDB role
+  ansible.builtin.set_fact:
+    mongodb_role: >-
+      {% if inventory_hostname in (groups[mongodb_config_servers_group] | default([])) %}
+      configsvr
+      {% elif inventory_hostname in (groups[mongodb_mongos_group] | default([])) %}
+      mongos
+      {% else %}
+      shardsvr
+      {% endif %}
+
+- name: Determine replica set name for shard node
+  ansible.builtin.set_fact:
+    mongodb_replset_name: "{{ item.replset }}"
+  loop: "{{ mongodb_shards }}"
+  when: inventory_hostname in (groups[item.group] | default([]))
+
+- name: Install prerequisite packages
+  ansible.builtin.apt:
+    name:
+      - gnupg
+      - curl
+    update_cache: true
+    state: present
+
+- name: Add MongoDB apt key
+  ansible.builtin.get_url:
+    url: "https://pgp.mongodb.com/server-{{ mongodb_version }}.asc"
+    dest: /etc/apt/keyrings/mongodb.asc
+    mode: "0644"
+
+- name: Add MongoDB apt repository
+  ansible.builtin.apt_repository:
+    repo: "deb [ signed-by=/etc/apt/keyrings/mongodb.asc ] https://repo.mongodb.org/apt/ubuntu {{ mongodb_repo_dist }}/mongodb-org/{{ mongodb_version }} multiverse"
+    filename: mongodb-org
+    state: present
+
+- name: Install MongoDB packages
+  ansible.builtin.apt:
+    name:
+      - mongodb-org
+      - "{{ mongodb_client_package }}"
+    update_cache: true
+    state: present
+
+- name: Create directories for MongoDB
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: mongodb
+    group: mongodb
+    mode: "0755"
+  loop:
+    - "{{ mongodb_data_root }}"
+    - "{{ mongodb_log_root }}"
+
+- name: Deploy shared keyfile
+  ansible.builtin.copy:
+    content: "{{ mongodb_keyfile_content }}"
+    dest: "{{ mongodb_keyfile_path }}"
+    owner: mongodb
+    group: mongodb
+    mode: "0400"
+  no_log: true
+
+- name: Render mongod config
+  ansible.builtin.template:
+    src: mongod.conf.j2
+    dest: /etc/mongod.conf
+    owner: root
+    group: root
+    mode: "0644"
+  when: mongodb_role != 'mongos'
+  notify: restart mongod
+
+- name: Render mongos config
+  ansible.builtin.template:
+    src: mongos.conf.j2
+    dest: /etc/mongos.conf
+    owner: root
+    group: root
+    mode: "0644"
+  when: mongodb_role == 'mongos'
+  notify: restart mongos
+
+- name: Ensure mongod service is running
+  ansible.builtin.systemd:
+    name: mongod
+    state: started
+    enabled: true
+  when: mongodb_role != 'mongos'
+
+- name: Ensure mongos service is running
+  ansible.builtin.systemd:
+    name: mongos
+    state: started
+    enabled: true
+  when: mongodb_role == 'mongos'
+
+- name: Flush handlers
+  ansible.builtin.meta: flush_handlers

@@ -1,0 +1,9 @@
+---
+mongodb_keyfile_content: "PLEASE_REPLACE_WITH_A_LONG_RANDOM_SECRET"
+mongodb_admin_password: "PLEASE_CHANGE_ME"
+
+mongodb_shards:
+  - replset: shard01ReplSet
+    group: mongo_shard01
+  - replset: shard02ReplSet
+    group: mongo_shard02
